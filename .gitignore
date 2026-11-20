@@ -1,0 +1,32 @@
+# ---------- 敏感配置（含个人路径等，切勿提交） ----------
+config.json
+
+# ---------- 本地下载/缓存 ----------
+downloads/
+*.pkl
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ---------- 日志 ----------
+*.log
+server.log
+
+# ---------- IDE / 系统 ----------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---------- 测试/临时 ----------
+*.tmp
+*.bak

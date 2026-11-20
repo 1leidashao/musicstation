@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MusicStation 音乐下载站</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --border: #2a2f3a;
+    --text: #e8eaf0; --text-dim: #9aa3b2; --accent: #6c8cff; --accent2: #8f6cff;
+    --green: #3ecf8e; --red: #ff6b6b; --yellow: #ffc94d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: "Segoe UI", "Microsoft YaHei", sans-serif; min-height: 100vh; }
+  header { padding: 18px 28px 0; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, #141824, var(--bg)); position: sticky; top: 0; z-index: 10; }
+  .hrow { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 19px; font-weight: 600; letter-spacing: .5px; }
+  h1 span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  nav { display: flex; gap: 4px; margin-top: 12px; }
+  nav a { padding: 9px 20px; font-size: 14px; color: var(--text-dim); text-decoration: none; border: 1px solid transparent; border-bottom: none; border-radius: 10px 10px 0 0; cursor: pointer; position: relative; }
+  nav a.active { color: var(--text); background: var(--panel); border-color: var(--border); font-weight: 600; }
+  nav a:hover { color: var(--text); }
+  nav .dot { position: absolute; top: 6px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: none; }
+  nav .dot.on { display: block; animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  .sub { color: var(--text-dim); font-size: 12px; margin-top: 4px; }
+  .searchbar { display: flex; gap: 10px; margin-top: 14px; max-width: 760px; }
+  .searchbar input { flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; color: var(--text); font-size: 14px; outline: none; }
+  .searchbar input:focus { border-color: var(--accent); }
+  .searchbar button { background: linear-gradient(90deg, var(--accent), var(--accent2)); border: none; border-radius: 10px; color: #fff; padding: 0 26px; font-size: 14px; cursor: pointer; }
+  #musicTools { padding: 4px 0 14px; }
+  main { padding: 20px 28px 80px; max-width: 1180px; margin: 0 auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+  h2 { font-size: 15px; color: var(--text-dim); font-weight: 600; margin: 18px 0 10px; display: flex; align-items: center; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; cursor: pointer; transition: .15s; position: relative; }
+  .card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .card .t { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 60px; }
+  .card .d { color: var(--text-dim); font-size: 12px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .side { position: absolute; top: 10px; right: 10px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; margin: 6px 0 12px; flex-wrap: wrap; }
+  .btn { background: var(--panel2); border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: .15s; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: linear-gradient(90deg, var(--accent), var(--accent2)); border: none; color: #fff; }
+  .btn.small { padding: 4px 12px; font-size: 12px; border-radius: 7px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { background: var(--panel2); color: var(--text-dim); font-weight: 600; font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(108,140,255,.05); }
+  td.name { font-weight: 600; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  td.dim { color: var(--text-dim); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .idx { color: var(--text-dim); font-size: 12px; width: 40px; }
+  .empty { color: var(--text-dim); font-size: 13px; padding: 30px; text-align: center; }
+  .loading { color: var(--text-dim); font-size: 13px; padding: 12px 4px; }
+  a.back { color: var(--accent); font-size: 13px; cursor: pointer; text-decoration: none; }
+  .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 22px; font-size: 13px; z-index: 99; display: none; }
+  /* 榜单源切换 */
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+  .tab { padding: 7px 18px; font-size: 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--panel); color: var(--text-dim); cursor: pointer; transition: .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; font-weight: 600; }
+  .src-badge { display: inline-block; font-size: 10px; border-radius: 4px; padding: 1px 6px; margin-right: 4px; vertical-align: 1px; }
+  .sb-qq { background: #1f2c46; color: #7db2ff; } .sb-kuwo { background: #173226; color: #6fe0a8; }
+  .sb-netease { background: #3a1f1f; color: #ff8f8f; } .sb-migu { background: #2c2340; color: #b99cff; }
+  /* 分页 */
+  .pager { display: flex; gap: 6px; align-items: center; margin: 14px 0 4px; flex-wrap: wrap; }
+  .pager .pg { min-width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: var(--panel); border-radius: 8px; font-size: 13px; cursor: pointer; color: var(--text-dim); }
+  .pager .pg:hover { color: var(--text); border-color: var(--accent); }
+  .pager .pg.active { background: linear-gradient(90deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; font-weight: 600; }
+  .pager .pg:disabled { opacity: .35; cursor: not-allowed; }
+  .pager .info { color: var(--text-dim); font-size: 12px; margin-left: 6px; }
+  /* 下载列表页 */
+  .job { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+  .jh { padding: 13px 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--panel2); }
+  .jh .t { font-size: 14px; font-weight: 600; }
+  .jh .m { font-size: 12px; color: var(--text-dim); }
+  .bar { height: 5px; background: var(--border); }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s; }
+  .jt-row { padding: 9px 18px; border-bottom: 1px solid var(--border); font-size: 13px; display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+  .jt-row:last-child { border-bottom: none; }
+  .jt-row .n { font-weight: 600; min-width: 160px; }
+  .jt-row .msg { color: var(--text-dim); font-size: 12px; flex: 1; min-width: 240px; }
+  .pill { font-size: 11px; border-radius: 20px; padding: 2px 10px; white-space: nowrap; }
+  .p-pending { background: #2a2f3a; color: var(--text-dim); }
+  .p-searching { background: #3a3320; color: var(--yellow); }
+  .p-downloading { background: #1f2c46; color: var(--accent); }
+  .p-uploading { background: #2c2340; color: var(--accent2); }
+  .p-done { background: #173226; color: var(--green); }
+  .p-failed { background: #3a1f1f; color: var(--red); }
+  .stats { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 22px; min-width: 110px; }
+  .stat b { font-size: 22px; display: block; }
+  .stat span { font-size: 12px; color: var(--text-dim); }
+  /* 日志页 */
+  #logBox { background: #0a0c10; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; font-family: Consolas, "Courier New", monospace; font-size: 12.5px; line-height: 1.75; height: calc(100vh - 300px); min-height: 320px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .lg-INFO { color: #c9d4e8; } .lg-WARNING { color: var(--yellow); } .lg-ERROR { color: var(--red); }
+  .lg-t { color: #5b6675; margin-right: 8px; }
+  .lg-lv { margin-right: 8px; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div>
+      <h1>🎵 Music<span>Station</span> 音乐下载站</h1>
+      <div class="sub">热歌榜：QQ音乐/酷我/网易云/咪咕 各 30 首自动去重 ｜ 歌手·专辑数据按 QQ→酷我→网易云→咪咕 优先取数 ｜ 下载同优先级·FLAC 无损优先 ｜ 下载完成后保存到本地音乐目录</div>
+    </div>
+  </div>
+  <nav>
+    <a id="nav-music" class="active" onclick="go('music')">🎶 音乐</a>
+    <a id="nav-downloads" onclick="go('downloads')">📥 下载列表<span class="dot" id="dlDot"></span></a>
+    <a id="nav-logs" onclick="go('logs')">📜 运行日志</a>
+  </nav>
+  <div id="musicTools">
+    <div class="searchbar">
+      <input id="kw" placeholder="搜索歌曲 / 歌手 / 专辑，回车搜索…" autocomplete="off">
+      <button onclick="doSearch()">搜 索</button>
+    </div>
+  </div>
+</header>
+<main>
+  <!-- ===================== 音乐页 ===================== -->
+  <div class="page active" id="page-music"><div id="content"></div></div>
+
+  <!-- ===================== 下载列表页 ===================== -->
+  <div class="page" id="page-downloads">
+    <h2>📥 下载任务列表（服务端记录，页面刷新不丢失）</h2>
+    <div class="stats" id="dlStats"></div>
+    <div class="toolbar">
+      <button class="btn small" onclick="refreshDownloads(true)">立即刷新</button>
+      <label style="font-size:12px;color:var(--text-dim)"><input type="checkbox" id="autoScrollDl" checked> 自动滚动到进行中的任务</label>
+    </div>
+    <div id="dlList"><div class="loading">加载中…</div></div>
+  </div>
+
+  <!-- ===================== 日志页 ===================== -->
+  <div class="page" id="page-logs">
+    <h2>📜 实时运行日志（搜索 → 下载 → 本地保存全流程）</h2>
+    <div class="toolbar">
+      <button class="btn small" onclick="clearLogView()">清屏</button>
+      <label style="font-size:12px;color:var(--text-dim)"><input type="checkbox" id="autoScrollLog" checked> 自动滚动到底部</label>
+      <span class="sub" id="logCount"></span>
+    </div>
+    <div id="logBox"></div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let $ = s => document.querySelector(s);
+let pollDl = null, pollLog = null, logCursor = 0, logPaused = false;
+/* 分页大小 / 轮询间隔: 启动时从后端 /api/config 读取（config.json 的 frontend 段） */
+let PAGE_SIZE = 20;
+const CFG = { jobs_poll_ms: 2000, logs_poll_ms: 1000 };
+fetch(API + '/api/config').then(r => r.json()).then(d => {
+  if (d.ok) {
+    if (d.page_size) PAGE_SIZE = d.page_size;
+    if (d.jobs_poll_ms) CFG.jobs_poll_ms = d.jobs_poll_ms;
+    if (d.logs_poll_ms) CFG.logs_poll_ms = d.logs_poll_ms;
+  }
+}).catch(() => {});
+
+/* 全局状态: hot 榜单数据 / 搜索结果 / 当前歌手 / 当前专辑 */
+const S = {
+  hot: { charts: {}, merged: [], tab: 'merged', labels: {}, order: [] },
+  lastSearch: null,            // {q, artists, albums, songs}
+  artist: null,                // {source, id, name, albums, songs, page}
+  album: null,                 // {source, id, name, artist, songs}
+};
+/* 歌曲上下文（下载用，键 -> 曲目数组） */
+const CTX = { hotTab: [], searchSongs: [], artistSongs: [], albumSongs: [] };
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3400); }
+function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDur(sec) { if (!sec) return '--:--'; return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`; }
+function srcBadges(list) { return (list||[]).map(x => `<span class="src-badge sb-${x}">${SRC_LABEL[x]||x}</span>`).join(''); }
+let SRC_LABEL = {};
+
+/* ---------------- 页面切换 ---------------- */
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  $('#page-' + page).classList.add('active');
+  $('#nav-' + page).classList.add('active');
+  $('#musicTools').style.display = page === 'music' ? 'block' : 'none';
+  location.hash = page;
+  if (page === 'downloads') { refreshDownloads(); startDlPoll(); } else stopDlPoll();
+  if (page === 'logs') { startLogPoll(); } else stopLogPoll();
+}
+
+/* ===================== 首页: 热歌榜 ===================== */
+function showHome() {
+  $('#content').innerHTML = `
+    <h2>🔥 热门歌曲推荐（多平台榜单实时聚合，跨平台自动去重）</h2>
+    <div class="tabs" id="hotTabs"></div>
+    <div id="hotBody"><div class="loading">正在获取四平台热歌榜…</div></div>`;
+  fetch(API + '/api/hot').then(r => r.json()).then(d => {
+    if (!d.ok) { $('#hotBody').innerHTML = `<div class="empty">${esc(d.error || '获取失败')}</div>`; return; }
+    S.hot = { charts: d.charts || {}, merged: d.merged || [], tab: S.hot.tab || 'merged', labels: d.labels || {}, order: d.order || [] };
+    SRC_LABEL = d.labels || {};
+    renderHotTabs();
+    renderHotBody();
+  }).catch(e => $('#hotBody').innerHTML = `<div class="empty">获取失败: ${esc(e)}</div>`);
+}
+
+function renderHotTabs() {
+  const h = S.hot;
+  const tabs = [{ key: 'merged', label: `聚合去重 (${h.merged.length})` }];
+  for (const k of h.order) {
+    const n = (h.charts[k] || []).length;
+    tabs.push({ key: k, label: `${h.labels[k] || k}${n ? ` (${n})` : ' (不可用)'}` });
+  }
+  $('#hotTabs').innerHTML = tabs.map(t =>
+    `<div class="tab ${h.tab === t.key ? 'active' : ''}" onclick="S.hot.tab='${t.key}';renderHotTabs();renderHotBody()">${esc(t.label)}</div>`).join('');
+}
+
+function renderHotBody() {
+  const h = S.hot;
+  const key = h.tab;
+  const songs = key === 'merged' ? h.merged : (h.charts[key] || []);
+  CTX.hotTab = songs;
+  if (!songs.length) {
+    $('#hotBody').innerHTML = `<div class="empty">${key === 'migu'
+      ? '咪咕官方榜单接口已停止对外开放（热歌仍会作为第 4 优先下载音源使用），可切换其他榜单查看'
+      : '该榜单暂时无法获取'}</div>`;
+    return;
+  }
+  $('#hotBody').innerHTML = `<div class="grid">` + songs.map((s, i) => `
+    <div class="card" onclick="dlRange('hotTab', [${i}], true)" title="点击下载：${esc(s.name)} - ${esc(s.singer)}">
+      <div class="t">${i+1}. ${key === 'merged' ? srcBadges(s.sources) : ''}${esc(s.name)}</div>
+      <div class="d">${esc(s.singer)}｜${esc(s.album)}</div>
+    </div>`).join('') + `</div>`;
+}
+
+/* ===================== 搜索 ===================== */
+function doSearch() {
+  const q = $('#kw').value.trim();
+  if (!q) return toast('请输入搜索关键词');
+  go('music');
+  $('#content').innerHTML = `<div class="loading">正在搜索「${esc(q)}」…</div>`;
+  fetch(API + '/api/search?q=' + encodeURIComponent(q)).then(r => r.json()).then(d => {
+    if (!d.ok) { $('#content').innerHTML = `<div class="empty">${esc(d.error || '搜索失败')}</div>`; return; }
+    S.lastSearch = d;
+    S.artist = null; S.album = null;
+    renderSearch();
+  }).catch(e => $('#content').innerHTML = `<div class="empty">搜索失败: ${esc(e)}</div>`);
+}
+
+function renderSearch() {
+  const d = S.lastSearch;
+  CTX.searchSongs = d.songs || [];
+  let html = '';
+  if ((d.artists || []).length) {
+    html += `<h2>🎤 歌手（点击查看专辑与全部歌曲）<span class="sub">数据来源：${esc(d.artist_source ? (d.labels ? d.labels[d.artist_source] : d.artist_source) : '')}（按 QQ→酷我→网易云→咪咕 优先）</span></h2><div class="grid">`
+      + d.artists.map((a, i) => `
+      <div class="card" onclick="loadArtist('${esc(a.source)}','${esc(a.id)}','${esc(a.name)}')">
+        <div class="t">🎤 ${esc(a.name)}</div>
+        <div class="d">${a.song_count ? `歌曲 ${a.song_count} 首` : ''}${a.album_count ? `｜专辑 ${a.album_count} 张` : ''}</div>
+      </div>`).join('') + `</div>`;
+  }
+  if ((d.albums || []).length) {
+    html += `<h2>💿 专辑（点击查看专辑全部歌曲）<span class="sub">数据来源：${esc(d.album_source ? (d.labels ? d.labels[d.album_source] : d.album_source) : '')}</span></h2><div class="grid">`
+      + d.albums.map(a => `
+      <div class="card" onclick="loadAlbum('${esc(a.source)}','${esc(a.id)}','${esc(a.name)}')">
+        <div class="t">💿 ${esc(a.name)}</div>
+        <div class="d">${esc(a.artist)}${a.publish ? `｜${esc(a.publish)}` : ''}</div>
+      </div>`).join('') + `</div>`;
+  }
+  if (CTX.searchSongs.length) html += `<h2>🎶 单曲</h2>` + songTable(CTX.searchSongs, 'searchSongs', i => `dlRange('searchSongs',[${i}],true)`);
+  if (!html) html = `<div class="empty">没有找到与「${esc(d.keyword)}」相关的内容</div>`;
+  $('#content').innerHTML = html;
+}
+
+/* ===================== 歌手页（专辑 + 全部歌曲分页） ===================== */
+function loadArtist(source, id, name) {
+  $('#content').innerHTML = `<div class="loading">正在加载歌手「${esc(name)}」的专辑与歌曲…（数据源：${esc(SRC_LABEL[source] || source)}）</div>`;
+  fetch(API + `/api/artist/${source}/${id}?name=` + encodeURIComponent(name)).then(r => r.json()).then(d => {
+    if (!d.ok) { $('#content').innerHTML = `<div class="empty">${esc(d.error)}</div>`; return; }
+    S.artist = { source, id, name: d.artist || name, albums: d.albums || [], songs: d.songs || [], page: 1 };
+    S.album = null;
+    renderArtist();
+  }).catch(e => $('#content').innerHTML = `<div class="empty">加载失败: ${esc(e)}</div>`);
+}
+
+function renderArtist() {
+  const a = S.artist;
+  CTX.artistSongs = a.songs;
+  const label = SRC_LABEL[a.source] || a.source;
+  let html = `
+    <div class="toolbar">
+      <a class="back" onclick="renderSearch()">← 返回搜索结果</a>
+      <button class="btn primary" onclick="dlAllArtistSongs()">⬇ 下载全部歌曲 (${a.songs.length} 首)</button>
+      ${a.albums.length ? `<button class="btn" onclick="dlAllAlbums()">⬇ 下载全部专辑 (${a.albums.length} 张)</button>` : ''}
+    </div>
+    <h2>🎤 ${esc(a.name)} <span class="src-badge sb-${a.source}">${esc(label)}</span> <span class="sub">本地保存目录「${esc(a.name)}」</span></h2>`;
+
+  /* 专辑区 */
+  if (a.albums.length) {
+    html += `<h2>💿 全部专辑 (${a.albums.length} 张) — 点击专辑查看曲目</h2><div class="grid">`
+      + a.albums.map((al, i) => `
+      <div class="card" onclick="loadAlbum('${esc(a.source)}','${esc(al.id)}','${esc(al.name)}',true)">
+        <div class="t">💿 ${esc(al.name)}</div>
+        <div class="d">${esc(al.publish || '')}${al.artist ? `｜${esc(al.artist)}` : ''}</div>
+        <div class="side"><button class="btn small" title="下载整张专辑" onclick="event.stopPropagation();dlAlbums([${i}])">⬇ 专辑</button></div>
+      </div>`).join('') + `</div>`;
+  }
+
+  /* 歌曲区（分页） */
+  html += `<h2>🎶 全部歌曲 (${a.songs.length} 首)</h2>`;
+  if (!a.songs.length) {
+    html += `<div class="empty">没有获取到歌曲列表</div>`;
+  } else {
+    html += pagerHtml(a.songs.length, a.page, p => { S.artist.page = p; renderArtist(); window.scrollTo({top: 0, behavior: 'smooth'}); });
+    html += songTablePage(a.songs, a.page, 'artistSongs');
+    html += pagerHtml(a.songs.length, a.page, p => { S.artist.page = p; renderArtist(); window.scrollTo({top: 0, behavior: 'smooth'}); });
+  }
+  $('#content').innerHTML = html;
+}
+
+/* ===================== 专辑页 ===================== */
+function loadAlbum(source, id, name, fromArtist) {
+  $('#content').innerHTML = `<div class="loading">正在加载专辑「${esc(name)}」…</div>`;
+  fetch(API + `/api/album/${source}/${id}`).then(r => r.json()).then(d => {
+    if (!d.ok) { $('#content').innerHTML = `<div class="empty">${esc(d.error || '专辑加载失败')}</div>`; return; }
+    S.album = { source, id, name: d.album || name, artist: d.artist || (S.artist ? S.artist.name : ''), songs: d.songs || [] };
+    renderAlbum(fromArtist);
+  }).catch(e => $('#content').innerHTML = `<div class="empty">加载失败: ${esc(e)}</div>`);
+}
+
+function renderAlbum(fromArtist) {
+  const al = S.album;
+  CTX.albumSongs = al.songs;
+  const back = fromArtist || S.artist ? 'renderArtist()' : 'renderSearch()';
+  const artistDir = al.artist || (S.artist ? S.artist.name : '');
+  $('#content').innerHTML = `
+    <div class="toolbar">
+      <a class="back" onclick="${back}">← 返回</a>
+      <button class="btn primary" onclick="dlAllFromCtx('albumSongs','${esc(artistDir)}')">⬇ 下载本专辑全部 (${al.songs.length} 首)</button>
+    </div>
+    <h2>💿 ${esc(al.name)} <span class="src-badge sb-${al.source}">${esc(SRC_LABEL[al.source] || al.source)}</span>
+        <span class="sub">${esc(al.artist || '')}${artistDir ? `｜本地保存目录「${esc(artistDir)}」` : ''}</span></h2>`
+    + songTable(al.songs, 'albumSongs', i => `dlRange('albumSongs',[${i}],false,'${esc(artistDir)}')`);
+}
+
+/* ===================== 歌曲表格 / 分页 ===================== */
+function songTable(songs, ctxKey, dlFn) {
+  if (!songs.length) return `<div class="empty">没有歌曲</div>`;
+  const rows = songs.map((s, i) => `
+    <tr>
+      <td class="idx">${i+1}</td>
+      <td class="name">${esc(s.name)}</td>
+      <td class="dim">${esc(s.singer)}</td>
+      <td class="dim">${esc(s.album)}</td>
+      <td class="dim">${fmtDur(s.duration)}</td>
+      <td><button class="btn small primary" onclick="${dlFn(i)}">下载</button></td>
+    </tr>`).join('');
+  return `<table><thead><tr><th>#</th><th>歌曲</th><th>歌手</th><th>专辑</th><th>时长</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function songTablePage(songs, page, ctxKey) {
+  const start = (page - 1) * PAGE_SIZE;
+  const slice = songs.slice(start, start + PAGE_SIZE);
+  const rows = slice.map((s, i) => {
+    const gi = start + i;
+    return `
+    <tr>
+      <td class="idx">${gi+1}</td>
+      <td class="name">${esc(s.name)}</td>
+      <td class="dim">${esc(s.singer)}</td>
+      <td class="dim">${esc(s.album)}</td>
+      <td class="dim">${fmtDur(s.duration)}</td>
+      <td><button class="btn small primary" onclick="dlRange('${ctxKey}',[${gi}],false)">下载</button></td>
+    </tr>`;
+  }).join('');
+  return `<table><thead><tr><th>#</th><th>歌曲</th><th>歌手</th><th>专辑</th><th>时长</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function pagerHtml(total, page, onSwitch) {
+  const pages = Math.ceil(total / PAGE_SIZE) || 1;
+  if (pages <= 1) return '';
+  const fnName = `__pg_${Math.random().toString(36).slice(2, 8)}`;
+  window[fnName] = onSwitch;
+  let btns = '';
+  const window_ = 5, from = Math.max(1, page - 2), to = Math.min(pages, from + window_ - 1);
+  btns += `<button class="pg" ${page <= 1 ? 'disabled' : ''} onclick="window.${fnName}(1)">«</button>`;
+  btns += `<button class="pg" ${page <= 1 ? 'disabled' : ''} onclick="window.${fnName}(${page-1})">‹</button>`;
+  for (let p = from; p <= to; p++) btns += `<button class="pg ${p === page ? 'active' : ''}" onclick="window.${fnName}(${p})">${p}</button>`;
+  if (to < pages) btns += `<button class="pg" disabled>…</button><button class="pg" onclick="window.${fnName}(${pages})">${pages}</button>`;
+  btns += `<button class="pg" ${page >= pages ? 'disabled' : ''} onclick="window.${fnName}(${page+1})">›</button>`;
+  btns += `<button class="pg" ${page >= pages ? 'disabled' : ''} onclick="window.${fnName}(${pages})">»</button>`;
+  return `<div class="pager">${btns}<span class="info">第 ${page} / ${pages} 页 · 共 ${total} 首</span></div>`;
+}
+
+/* ===================== 下载提交 ===================== */
+function dlRange(ctxKey, idxs, perSongDir, fixedDir) {
+  const songs = (CTX[ctxKey] || []);
+  const picked = idxs.map(i => songs[i]).filter(Boolean);
+  if (!picked.length) return toast('页面状态已失效，请刷新');
+  const artistDir = fixedDir || (perSongDir ? (picked[0].singer || '单曲合集') : '');
+  submitJob('单曲下载', picked, artistDir);
+}
+
+function dlAllFromCtx(ctxKey, artistDir) {
+  const songs = CTX[ctxKey] || [];
+  if (!songs.length) return toast('没有可下载的歌曲');
+  if (!confirm(`确认下载全部 ${songs.length} 首歌曲？\n每首将按 音源优先级+最高品质 下载，并保存到本地目录「${artistDir || '按歌手名'}」。`)) return;
+  submitJob('批量下载', songs, artistDir);
+}
+
+function dlAllArtistSongs() {
+  const a = S.artist; if (!a) return;
+  if (!a.songs.length) return toast('没有歌曲');
+  if (!confirm(`确认下载 ${a.name} 的全部 ${a.songs.length} 首歌曲？\n将保存到本地目录「${a.name}」，数量较多时耗时较长。`)) return;
+  submitJob(`歌手「${a.name}」全部歌曲`, a.songs, a.name);
+}
+
+function dlAlbums(idxs) {
+  const a = S.artist; if (!a) return;
+  const albums = idxs.map(i => a.albums[i]).filter(Boolean);
+  if (!albums.length) return;
+  if (!confirm(`确认下载 ${albums.length} 张专辑（${albums.map(x => x.name).join('、')}）的全部歌曲？\n将保存到本地目录「${a.name}」。`)) return;
+  fetch(API + '/api/download_albums', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ albums: albums.map(x => ({ source: a.source, id: x.id, name: x.name })), artist: a.name }) })
+  .then(r => r.json()).then(d => {
+    if (!d.ok || !d.job_id) { toast(d.error || '提交失败'); return; }
+    toast(`✅ 已展开 ${d.songs} 首歌曲并加入下载队列${(d.skipped||[]).length ? `（${d.skipped.length} 张专辑获取曲目失败已跳过）` : ''}`);
+    startDlPoll(); $('#dlDot').classList.add('on');
+  }).catch(e => toast('提交失败: ' + e));
+}
+
+function dlAllAlbums() {
+  const a = S.artist; if (!a || !a.albums.length) return;
+  if (!confirm(`确认下载 ${a.name} 的全部 ${a.albums.length} 张专辑？\n曲目由后台逐张展开后统一下载，保存到本地目录「${a.name}」。`)) return;
+  fetch(API + '/api/download_albums', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ albums: a.albums.map(x => ({ source: a.source, id: x.id, name: x.name })), artist: a.name }) })
+  .then(r => r.json()).then(d => {
+    if (!d.ok || !d.job_id) { toast(d.error || '提交失败'); return; }
+    toast(`✅ ${a.albums.length} 张专辑共展开 ${d.songs} 首歌曲，已加入下载队列${(d.skipped||[]).length ? `（${d.skipped.length} 张获取曲目失败已跳过）` : ''}`);
+    startDlPoll(); $('#dlDot').classList.add('on');
+  }).catch(e => toast('提交失败: ' + e));
+}
+
+function submitJob(title, songs, artistDir) {
+  fetch(API + '/api/download', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ title, songs, artist: artistDir }) })
+  .then(r => r.json()).then(d => {
+    if (!d.ok || !d.job_id) { toast(d.error || '提交失败'); return; }
+    toast(`✅ 已加入下载队列（${songs.length} 首）→ 本地目录「${d.artist_dir}」，到「下载列表」页查看进度`);
+    startDlPoll();
+    $('#dlDot').classList.add('on');
+  }).catch(e => toast('提交失败: ' + e));
+}
+
+/* ===================== 下载列表页（服务端数据） ===================== */
+const PILL = { pending: ['排队中','p-pending'], searching: ['搜索音源','p-searching'], downloading: ['下载中','p-downloading'],
+               saving: ['保存本地','p-uploading'], done: ['完成','p-done'], failed: ['失败','p-failed'] };
+
+function refreshDownloads(force) {
+  fetch(API + '/api/jobs').then(r => r.json()).then(d => {
+    if (!d.ok) return;
+    const jobs = d.jobs || [];
+    const all = jobs.flatMap(j => j.tasks);
+    const done = all.filter(t => t.status === 'done').length;
+    const failed = all.filter(t => t.status === 'failed').length;
+    const running = jobs.filter(j => j.state === 'running').length;
+    $('#dlStats').innerHTML = `
+      <div class="stat"><b>${jobs.length}</b><span>任务总数</span></div>
+      <div class="stat"><b style="color:var(--green)">${done}</b><span>成功歌曲</span></div>
+      <div class="stat"><b style="color:var(--red)">${failed}</b><span>失败歌曲</span></div>
+      <div class="stat"><b style="color:var(--yellow)">${running}</b><span>进行中任务</span></div>`;
+    $('#dlDot').classList.toggle('on', running > 0);
+    if (!jobs.length) { $('#dlList').innerHTML = '<div class="empty">还没有下载任务，去「音乐」页搜索并下载吧</div>'; return; }
+    $('#dlList').innerHTML = jobs.slice().reverse().map(j => {
+      const dn = j.tasks.filter(t => t.status === 'done').length;
+      const fl = j.tasks.filter(t => t.status === 'failed').length;
+      const pct = j.tasks.length ? Math.round((dn + fl) / j.tasks.length * 100) : 0;
+      return `<div class="job" data-state="${j.state}">
+        <div class="jh">
+          <div><span class="t">${esc(j.title)}</span> <span class="m">${j.id}</span></div>
+          <div class="m">${dn}/${j.tasks.length} 成功${fl ? `｜${fl} 失败` : ''}｜${j.state === 'running' ? '⏳ 进行中' : '✔ 已结束'}</div>
+        </div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+        ${j.tasks.map(t => `
+          <div class="jt-row">
+            <span class="n">${esc(t.name)} - ${esc(t.singer)}</span>
+            <span class="pill ${PILL[t.status] ? PILL[t.status][1] : 'p-pending'}">${PILL[t.status] ? PILL[t.status][0] : t.status}</span>
+            <span class="msg">${t.source ? `[${esc(t.source)}${t.ext ? ' ' + t.ext.toUpperCase() : ''}${t.size ? ' ' + t.size : ''}] ` : ''}${esc(t.message || '')}</span>
+          </div>`).join('')}
+      </div>`;
+    }).join('');
+    if (force !== true && $('#autoScrollDl').checked) {
+      const first = $('#dlList').querySelector('.job[data-state="running"]');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }).catch(() => {});
+}
+
+function startDlPoll() { if (!pollDl) pollDl = setInterval(() => refreshDownloads(), 2000); refreshDownloads(); }
+function stopDlPoll() { clearInterval(pollDl); pollDl = null; }
+
+/* ===================== 日志页 ===================== */
+function startLogPoll() {
+  if (pollLog) return;
+  const box = $('#logBox');
+  box.addEventListener('scroll', () => { logPaused = (box.scrollTop + box.clientHeight) < box.scrollHeight - 40; });
+  pollLog = setInterval(pollLogs, 1000);
+  pollLogs();
+}
+function stopLogPoll() { clearInterval(pollLog); pollLog = null; }
+
+function pollLogs() {
+  fetch(API + `/api/logs?since=${logCursor}`).then(r => r.json()).then(d => {
+    if (!d.ok || !d.logs.length) return;
+    const box = $('#logBox');
+    const atBottom = !logPaused;
+    for (const l of d.logs) {
+      const div = document.createElement('div');
+      div.className = 'lg-' + l.level;
+      div.innerHTML = `<span class="lg-t">${l.t}</span><span class="lg-lv">${l.level}</span>${esc(l.msg)}`;
+      box.appendChild(div);
+    }
+    logCursor = d.total;
+    $('#logCount').textContent = `共 ${d.total} 条`;
+    if (atBottom && $('#autoScrollLog').checked) box.scrollTop = box.scrollHeight;
+  }).catch(() => {});
+}
+
+function clearLogView() { $('#logBox').innerHTML = ''; }
+
+/* ---------------- 初始化 ---------------- */
+$('#kw').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+showHome();
+const h = location.hash.replace('#', '');
+if (h === 'downloads' || h === 'logs') go(h); else startDlPoll();
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8765
+  },
+  "download": {
+    "local_dir": "downloads",
+    "source_priority": [
+      "QQMusicClient", "KuwoMusicClient", "NeteaseMusicClient", "MiguMusicClient",
+      "BodianMusicClient", "QianqianMusicClient", "JooxMusicClient", "TwoT58MusicClient",
+      "TuneHubMusicClient", "BilibiliMusicClient", "SodaMusicClient", "GequbaoMusicClient",
+      "GequhaiMusicClient", "FangpiMusicClient", "MituMusicClient", "YinyuekuMusicClient",
+      "MyFreeMP3MusicClient", "StreetVoiceMusicClient", "AudiusMusicClient", "JamendoMusicClient"
+    ],
+    "source_labels": {
+      "QQMusicClient": "QQ音乐",
+      "KuwoMusicClient": "酷我音乐",
+      "NeteaseMusicClient": "网易云音乐",
+      "MiguMusicClient": "咪咕音乐",
+      "BodianMusicClient": "波点音乐",
+      "QianqianMusicClient": "千千音乐",
+      "JooxMusicClient": "JOOX音乐",
+      "TwoT58MusicClient": "TwoT58",
+      "TuneHubMusicClient": "TuneHub",
+      "BilibiliMusicClient": "B站音乐",
+      "SodaMusicClient": "Soda音乐",
+      "GequbaoMusicClient": "歌曲宝",
+      "GequhaiMusicClient": "歌曲海",
+      "FangpiMusicClient": "方皮音乐",
+      "MituMusicClient": "米兔音乐",
+      "YinyuekuMusicClient": "音乐库",
+      "MyFreeMP3MusicClient": "MyFreeMP3",
+      "StreetVoiceMusicClient": "街声StreetVoice",
+      "AudiusMusicClient": "Audius",
+      "JamendoMusicClient": "Jamendo"
+    },
+    "search_size_per_source": 20,
+    "lossless_exts": ["flac", "wav", "alac", "ape", "wv", "tta"],
+    "lossy_exts": ["mp3", "m4a", "aac", "ogg"],
+    "exclude_keywords": ["live", "cover", "翻唱", "伴奏", "铃声", "dj"],
+    "cleanup": {
+      "retry_wait_seconds": 2.0,
+      "rmdir_retries": 3
+    }
+  },
+  "platforms": {
+    "source_order": ["qq", "kuwo", "netease", "migu"],
+    "source_labels": {
+      "qq": "QQ音乐",
+      "kuwo": "酷我音乐",
+      "netease": "网易云音乐",
+      "migu": "咪咕音乐"
+    },
+    "hot_limit": 30,
+    "artist_songs_cap": 500,
+    "artist_albums_cap": 100,
+    "search_song_limit": 15,
+    "search_artist_limit": 10,
+    "search_album_limit": 20,
+    "request_timeout": 12,
+    "page_delay": 0.2,
+    "chart_ids": {
+      "qq_toplist": 26,
+      "kuwo_bang": 93,
+      "netease_playlist": 3778678
+    }
+  },
+  "frontend": {
+    "page_size": 20,
+    "jobs_poll_ms": 2000,
+    "logs_poll_ms": 1000
+  },
+  "log": {
+    "level": "INFO",
+    "buffer_capacity": 2000
+  }
+}
